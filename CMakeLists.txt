@@ -13,4 +13,15 @@ add_executable(lock_free_eht main.cpp
         lib/node/node.cpp
         lib/node/node.h
         lib/node/header-node.cpp
+        include/eth_storage/htable_header.h
+        include/eth_storage/htable_directory.h
+        include/common.h
+        include/eth_storage/htable_bucket.h
+        include/eth_storage/page_manager.h
+        include/eth_storage/page.h
+        include/eth_storage/locks.h
+        include/eth_storage/lock_gurad_page.h
+        src/lock_gurad_page.cpp
 )
+
+
