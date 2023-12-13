@@ -4,7 +4,8 @@
 
 #include <shared_mutex>
 
-#define NODE_SIZE 2000
+#define NODE_SIZE 4000
+#define DEPTH 8
 
 class Node {
 public:
@@ -15,10 +16,6 @@ public:
 
     ~Node() {
         delete data_;
-    }
-
-    void SetData(char *data) {
-        data_ = data;
     }
 
     char *GetData() {
@@ -36,11 +33,12 @@ public:
     template<class T>
     T *AsMut();
 
+    static uint32_t GetDirIndex(uint32_t hash_val, bool msb);
+
 private:
     /** Zeroes out the data. */
     inline void ResetMemory() { memset(data_, 0, NODE_SIZE); }
 
     char *data_;
     std::shared_mutex mutex_;
-
 };

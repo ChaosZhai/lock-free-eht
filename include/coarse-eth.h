@@ -3,7 +3,8 @@
 //
 #include <mutex>
 #include "eht.h"
-#include "../lib/node/node.h"
+#include "../lib/node/inner-node.hpp"
+#include "../lib/node/leaf-node.hpp"
 
 template <typename K, typename V, typename KC>
 class CoarseEHT : public ExtendibleHashTable<K, V, KC> {
@@ -18,5 +19,5 @@ public:
 
 private:
     std::mutex mutex_;
-    Node *root_;
+    InnerNode *root_;
 };
