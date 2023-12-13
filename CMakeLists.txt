@@ -14,4 +14,11 @@ add_executable(lock_free_eht main.cpp
         lib/node/node.h
         lib/node/inner-node.hpp
         lib/node/leaf-node.hpp
+        lib/node/header-node.cpp
+        include/eth_storage/htable_header.h
+        include/eth_storage/htable_directory.h
+        include/common.h
+        include/eth_storage/htable_bucket.h
 )
+
+
