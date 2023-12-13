@@ -2,13 +2,16 @@
 // Created by Chaos Zhai on 12/9/23.
 //
 #include <cassert>
-#include "node.h"
 
+#define LEAF_NODE_SIZE 1 << DEPTH
+namespace eht {
+#pragma once
 template<typename K, typename V, typename KC>
 class LeafNode : public Node {
-    explicit LeafNode(uint32_t max_size) : Node(), max_size_(max_size) {
+public:
+    LeafNode() : Node() {
         size_ = 0;
-        array_ = new KV[max_size_];
+
     }
 
     [[nodiscard]] auto GetSize() const -> uint32_t {
@@ -56,7 +59,8 @@ class LeafNode : public Node {
 
 private:
     uint32_t size_;
-    uint32_t max_size_;
+    uint32_t max_size_ = LEAF_NODE_SIZE;
     using KV = std::pair<K, V>;
-    KV array_[];
+    KV array_[LEAF_NODE_SIZE];
 };
+} // namespace eht

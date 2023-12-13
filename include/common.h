@@ -6,9 +6,10 @@
 #include <ctime>
 #ifndef LOCK_FREE_EHT_COMMON_H
 #define LOCK_FREE_EHT_COMMON_H
+
 static constexpr int INVALID_PAGE_ID = -1; // invalid page id
 static constexpr uint64_t HTABLE_HEADER_PAGE_METADATA_SIZE = sizeof(uint32_t);
-static constexpr uint64_t HTABLE_HEADER_MAX_DEPTH = 9;
+
 static constexpr uint64_t HTABLE_HEADER_ARRAY_SIZE = 1
                                                      << HTABLE_HEADER_MAX_DEPTH;
 static constexpr uint64_t BUCKET_SIZE = 4096;
