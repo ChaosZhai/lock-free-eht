@@ -12,5 +12,6 @@ add_executable(lock_free_eht main.cpp
         lib/comparator/int-comparator.h
         lib/node/node.cpp
         lib/node/node.h
-        lib/node/header-node.cpp
+        lib/node/inner-node.hpp
+        lib/node/leaf-node.hpp
 )
