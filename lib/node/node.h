@@ -5,7 +5,7 @@
 #include <shared_mutex>
 
 #define NODE_SIZE 4000
-#define DEPTH 8
+#define DEPTH 9
 #pragma once
 namespace eht {
     class Node {
@@ -22,6 +22,11 @@ namespace eht {
         char *GetData() {
             return data_;
         }
+        void SetData(char* data) {
+            data_ = data;
+        }
+
+
 
         inline void WLock() { mutex_.lock(); }
 

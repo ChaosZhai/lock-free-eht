@@ -49,7 +49,7 @@ namespace eht {
          * @return the down-casted 32-bit hash
          */
         auto Hash(K key) const -> uint32_t {
-            return static_cast<uint32_t>(hash_fn_.GetHash(key));
+            return static_cast<uint32_t>((key));
         }
 
         std::string name_;

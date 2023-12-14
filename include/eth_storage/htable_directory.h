@@ -35,7 +35,7 @@ namespace eht {
 /**
  * Directory Page for extendible hash table.
  */
-    class ExtendibleHTableDirectoryNode : public InnerNode {
+    class ExtendibleHTableDirectoryNode {
     public:
         ExtendibleHTableDirectoryNode(uint32_t max_depth = HTABLE_DIRECTORY_MAX_DEPTH) {
             max_depth_ = max_depth;
@@ -45,6 +45,8 @@ namespace eht {
                 bucket_page_ids_[i] = INVALID_PAGE_ID;
             }
         }
+
+
 
         /**
          * Get the bucket index that the key is hashed to

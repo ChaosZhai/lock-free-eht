@@ -50,11 +50,10 @@ namespace eht {
  * Bucket page for extendible hash table.
  */
     template<typename KeyType, typename ValueType, typename KeyComparator>
-    class ExtendibleHTableBucketNode : public LeafNode<KeyType, ValueType, KeyComparator> {
+    class ExtendibleHTableBucketNode  {
     public:
         // Delete all constructor / destructor to ensure memory safety
-        explicit ExtendibleHTableBucketNode(uint32_t max_size = HTableBucketArraySize(sizeof(MappingType))) :
-                LeafNode<KeyType, ValueType, KeyComparator>(){
+        explicit ExtendibleHTableBucketNode(uint32_t max_size = HTableBucketArraySize(sizeof(MappingType))) {
             size_ = 0;
             max_size_ = max_size;
         }

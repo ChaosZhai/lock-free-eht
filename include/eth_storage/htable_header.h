@@ -32,7 +32,7 @@
 
 
 namespace eht {
-    class ExtendibleHTableHeaderNode : public InnerNode {
+    class ExtendibleHTableHeaderNode  {
     public:
 
         ExtendibleHTableHeaderNode(uint32_t max_depth = HTABLE_HEADER_MAX_DEPTH) {
