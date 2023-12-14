@@ -22,6 +22,10 @@ add_executable(lock_free_eht main.cpp
         lib/hazardPointer/hazardPointer.h
         lib/hazardPointer/internalHazardPointer.h
         include/lockfree-eht.h
+        include/lockfree_helpers/segment.h
+        include/lockfree_helpers/node.h
+        include/lockfree_helpers/reverse.h
+        include/lockfree_helpers/table_reclaimer.h
 )
 
 
