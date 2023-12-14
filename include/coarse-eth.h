@@ -1,8 +1,10 @@
 //
 // Created by Chaos Zhai on 12/7/23.
 //
+#pragma once
 #include <mutex>
 #include <optional>
+#include <utility>
 
 #include "eht.h"
 #include "../lib/node/inner-node.hpp"
@@ -11,16 +13,15 @@
 #include "eth_storage/htable_directory.h"
 #include "eth_storage/htable_header.h"
 
-#pragma once
+
 namespace eht {
 template <typename K, typename V, typename KC>
 class CoarseEHT : public ExtendibleHashTable<K, V, KC> {
 public:
-    explicit CoarseEHT(const std::string &name, const KC &cmp,
+    explicit CoarseEHT(std::string name, const KC &cmp,
                        const HashFunction<K> &hash_fn,
                        uint32_t bucket_max_size = HTableBucketArraySize(sizeof(std::pair<K, V>)))
-                       : cmp_(cmp), hash_fn_(hash_fn), bucket_max_size_(bucket_max_size),
-    ExtendibleHashTable<K, V, KC>(name, cmp, hash_fn, bucket_max_size){
+                       : cmp_(cmp), hash_fn_(hash_fn), bucket_max_size_(bucket_max_size),name_(std::move(name)) {
         root_ = std::make_shared<ExtendibleHTableHeaderNode>().get();
     }
 
@@ -207,6 +208,7 @@ public:
 private:
     std::mutex mutex_;
     ExtendibleHTableHeaderNode *root_;
+    std::string name_;
     KC cmp_;
     HashFunction<K> hash_fn_;
     uint32_t bucket_max_size_;

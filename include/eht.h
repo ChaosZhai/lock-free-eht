@@ -1,6 +1,7 @@
 //
 // Created by Chaos Zhai on 12/1/23.
 //
+#pragma once
 
 #include <string>
 #include <utility>
@@ -15,11 +16,11 @@
 #define HTABLE_DIRECTORY_MAX_DEPTH 9
 #define HTableBucketArraySize(x) (1000 / (x))
 namespace eht {
-#pragma once
 
     template<typename K, typename V, typename KC>
     class ExtendibleHashTable {
     public:
+        ExtendibleHashTable() = default;
         /**
          * @brief Creates a new ExtendibleHashTable.
          *
@@ -33,11 +34,11 @@ namespace eht {
                                      uint32_t bucket_max_size = HTableBucketArraySize(sizeof(std::pair<K, V>)))
                 : name_(std::move(name)), cmp_(cmp), hash_fn_(hash_fn) {}
 
-        virtual auto Insert(const K &key, const V &value) -> bool;
+        virtual auto Insert(const K &key, const V &value) -> bool = 0;
 
-        virtual auto Remove(const K &key) -> bool;
+        virtual auto Remove(const K &key) -> bool = 0;
 
-        virtual auto Get(const K &key) -> std::optional<V>;
+        virtual auto Get(const K &key) -> std::optional<V> = 0;
 
     protected:
         /**

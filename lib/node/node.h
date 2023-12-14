@@ -32,10 +32,14 @@ namespace eht {
         inline void RUnlock() { mutex_.unlock_shared(); }
 
         template<class T>
-        const T *As();
+        const T *As() {
+            return reinterpret_cast<const T *>(GetData());
+        };
 
         template<class T>
-        T *AsMut();
+        auto AsMut() -> T* {
+            return reinterpret_cast<T *>(GetData());
+        };
 
         static uint32_t GetDirIndex(uint32_t hash_val, bool msb);
 
