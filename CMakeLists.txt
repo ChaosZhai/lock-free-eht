@@ -15,6 +15,15 @@ add_library(myLibrary STATIC include/eht.h
         include/eth_storage/htable_header.h
         include/eth_storage/htable_directory.h
         include/common.h
+        include/eth_storage/htable_bucket.h
+        lib/hazardPointer/reclaimer.h
+        lib/hazardPointer/hazardPointer.h
+        lib/hazardPointer/internalHazardPointer.h
+        include/lockfree-eht.h
+        include/lockfree_helpers/segment.h
+        include/lockfree_helpers/node.h
+        include/lockfree_helpers/reverse.h
+        include/lockfree_helpers/table_reclaimer.h
         include/eth_storage/htable_bucket.h)
 
 
@@ -26,4 +35,5 @@ add_executable(lock_free_eht
         include/fine-eth.h
 )
 target_link_libraries(lock_free_eht myLibrary)
+
 

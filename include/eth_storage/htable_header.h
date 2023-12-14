@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// extendible_htable_header_page.h
-//
-//
-//
-// Copyright (c) 2015-2023, Carnegie Mellon University Database Group, Yicheng Zhang
-//
-//===----------------------------------------------------------------------===//
-
 /**
  * Header page format:
  *  ---------------------------------------------------
@@ -25,7 +13,9 @@
 #include <stdexcept>
 #include <string>
 #include "../common.h"
+
 #include "../../lib/node/inner-node.hpp"
+
 
 #ifndef LOCK_FREE_EHT_HTABLE_HEADER_H
 #define LOCK_FREE_EHT_HTABLE_HEADER_H
@@ -99,7 +89,5 @@ namespace eht {
     };
 
 } // namespace eht
-
-
 
 #endif //LOCK_FREE_EHT_HTABLE_HEADER_H

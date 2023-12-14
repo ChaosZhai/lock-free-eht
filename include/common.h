@@ -7,6 +7,7 @@
 #ifndef LOCK_FREE_EHT_COMMON_H
 #define LOCK_FREE_EHT_COMMON_H
 
+
 static constexpr int INVALID_PAGE_ID = -1; // invalid page id
 static constexpr uint64_t HTABLE_HEADER_PAGE_METADATA_SIZE = sizeof(uint32_t);
 

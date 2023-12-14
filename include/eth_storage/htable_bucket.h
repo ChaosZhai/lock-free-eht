@@ -5,18 +5,6 @@
 #ifndef LOCK_FREE_EHT_HTABLE_BUCKET_H
 #define LOCK_FREE_EHT_HTABLE_BUCKET_H
 
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// extendible_htable_bucket_page.h
-//
-// Identification: src/include/storage/page/extendible_htable_bucket_page.h
-//
-// Copyright (c) 2015-2023, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 /**
  * Bucket page format:
  *  ----------------------------------------------------------------------------
@@ -44,7 +32,6 @@
 namespace eht {
     static constexpr uint64_t HTABLE_BUCKET_PAGE_METADATA_SIZE =
             sizeof(uint32_t) * 2;
-
 
 /**
  * Bucket page for extendible hash table.
@@ -234,3 +221,4 @@ namespace eht {
 
 #endif // LOCK_FREE_EHT_HTABLE_BUCKET_H
 } // namespace eht
+

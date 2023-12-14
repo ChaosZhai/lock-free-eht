@@ -14,7 +14,6 @@
 #include <climits>
 #include <cstdlib>
 #include <string>
-
 #include "../../lib/node/inner-node.hpp"
 #ifndef LOCK_FREE_EHT_HTABLE_DIRECTORY_H
 #define LOCK_FREE_EHT_HTABLE_DIRECTORY_H
@@ -28,6 +27,7 @@ namespace eht {
  * array must grow in powers of 2, and 1024 page_ids leaves zero room for
  * storage of the other member variables.
  */
+
 
     static constexpr uint64_t HTABLE_DIRECTORY_ARRAY_SIZE =
             1 << HTABLE_DIRECTORY_MAX_DEPTH;
@@ -322,4 +322,5 @@ namespace eht {
     static_assert(sizeof(page_id_t) == 4);
 
 } // namespace eht
+
 #endif // LOCK_FREE_EHT_HTABLE_DIRECTORY_H
