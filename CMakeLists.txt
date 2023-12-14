@@ -23,6 +23,7 @@ target_include_directories(myLibrary PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(lock_free_eht
         main.cpp
+        include/fine-eth.h
 )
 target_link_libraries(lock_free_eht myLibrary)
 
