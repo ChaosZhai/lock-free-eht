@@ -27,7 +27,7 @@ namespace eht {
          * @param name
          * @param cmp comparator for keys
          * @param hash_fn the hash function
-         * @param bucket_max_size the max size allowed for the bucket page array
+         * @param bucket_max_size the max size allowed for the bucket array
          */
         explicit ExtendibleHashTable(std::string name, const KC &cmp,
                                      const HashFunction<K> &hash_fn,

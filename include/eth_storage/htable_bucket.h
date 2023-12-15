@@ -6,7 +6,7 @@
 #define LOCK_FREE_EHT_HTABLE_BUCKET_H
 
 /**
- * Bucket page format:
+ * Bucket node format:
  *  ----------------------------------------------------------------------------
  * | METADATA | KEY(1) + VALUE(1) | KEY(2) + VALUE(2) | ... | KEY(n) + VALUE(n)
  *  ----------------------------------------------------------------------------
@@ -30,17 +30,15 @@
 #include <string>
 #include "../../lib/node/leaf-node.hpp"
 namespace eht {
-    static constexpr uint64_t HTABLE_BUCKET_PAGE_METADATA_SIZE =
-            sizeof(uint32_t) * 2;
 
 /**
- * Bucket page for extendible hash table.
+ * Bucket node for extendible hash table.
  */
     template<typename KeyType, typename ValueType, typename KeyComparator>
-    class ExtendibleHTableBucketNode  {
+    class ExtendibleHTableBucket  {
     public:
         // Delete all constructor / destructor to ensure memory safety
-        explicit ExtendibleHTableBucketNode(uint32_t max_size = HTableBucketArraySize(sizeof(MappingType))) {
+        explicit ExtendibleHTableBucket(uint32_t max_size = HTableBucketArraySize(sizeof(MappingType))) {
             size_ = 0;
             max_size_ = max_size;
         }
@@ -165,8 +163,7 @@ namespace eht {
             return array_[bucket_idx];
         }
 
-        auto
-        Merge(ExtendibleHTableBucketNode<KeyType, ValueType, KeyComparator> *other)
+        auto Merge(ExtendibleHTableBucket<KeyType, ValueType, KeyComparator> *other)
         -> bool {
             if (size_ + other->size_ > max_size_) {
                 return false;
@@ -201,7 +198,7 @@ namespace eht {
         /**
          * Prints the bucket's occupancy information
          */
-        void PrintBucket() const {
+        [[maybe_unused]] void PrintBucket() const {
             std::cout << "======== BUCKET (size_: " << size_
                       << " | max_size_: " << max_size_ << ") ========\n";
             std::cout << ("| i | k | v |\n");
@@ -221,4 +218,3 @@ namespace eht {
 
 #endif // LOCK_FREE_EHT_HTABLE_BUCKET_H
 } // namespace eht
-

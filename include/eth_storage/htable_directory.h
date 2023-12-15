@@ -3,9 +3,9 @@
 //
 
 /**
- * Directory page format:
+ * Directory node format:
  *  --------------------------------------------------------------------------------------
- * | MaxDepth (4) | GlobalDepth (4) | LocalDepths (512) | BucketPageIds(2048) |
+ * | MaxDepth (4) | GlobalDepth (4) | LocalDepths (512) | BucketnodeIds(2048) |
  * Free(1528)
  *  --------------------------------------------------------------------------------------
  */
@@ -20,18 +20,17 @@
 namespace eht {
 
 /**
- * HTABLE_DIRECTORY_ARRAY_SIZE is the number of page_ids that can fit in the
- * directory page of an extendible hash index. This is 512 because the directory
- * array must grow in powers of 2, and 1024 page_ids leaves zero room for
+ * HTABLE_DIRECTORY_ARRAY_SIZE is the number of node_ids that can fit in the
+ * directory node of an extendible hash index. This is 512 because the directory
+ * array must grow in powers of 2, and 1024 node_ids leaves zero room for
  * storage of the other member variables.
  */
-
 
     static constexpr uint64_t HTABLE_DIRECTORY_ARRAY_SIZE =
             1 << HTABLE_DIRECTORY_MAX_DEPTH;
 
 /**
- * Directory Page for extendible hash table.
+ * Directory node for extendible hash table.
  */
     class ExtendibleHTableDirectoryNode {
     public:
@@ -40,11 +39,9 @@ namespace eht {
             global_depth_ = 0; // Start with global depth of 0
             for (uint32_t i = 0; i < HTABLE_DIRECTORY_ARRAY_SIZE; i++) {
                 local_depths_[i] = 0;
-                bucket_page_ids_[i] = INVALID_PAGE_ID;
+                bucket_ids_[i] = INVALID_NODE_ID;
             }
         }
-
-
 
         /**
          * Get the bucket index that the key is hashed to
@@ -57,39 +54,16 @@ namespace eht {
         }
 
         /**
-         * Lookup a bucket page using a directory index
+         * Lookup a bucket node using a directory index
          *
          * @param bucket_idx the index in the directory to lookup
-         * @return bucket page_id corresponding to bucket_idx
+         * @return bucket node_id corresponding to bucket_idx
          */
-        [[nodiscard]] auto GetBucketPageId(uint32_t bucket_idx) const -> page_id_t {
+        [[nodiscard]] auto GetBucketId(uint32_t bucket_idx) const -> node_id_t {
             if (bucket_idx >= (1U << global_depth_)) {
                 throw std::out_of_range("Bucket index out of bound");
             }
-            return bucket_page_ids_[bucket_idx];
-        }
-
-        /**
-         * Updates the directory index using a bucket index and page_id
-         *
-         * @param bucket_idx directory index at which to insert page_id
-         * @param bucket_page_id page_id to insert
-         */
-        void SetBucketPageId(uint32_t bucket_idx, page_id_t bucket_page_id) {
-            if (bucket_idx >= (1U << global_depth_)) {
-                throw std::out_of_range("Bucket index out of bound");
-            }
-            bucket_page_ids_[bucket_idx] = bucket_page_id;
-        }
-
-        /**
-         * Gets the split image of an index
-         *
-         * @param bucket_idx the directory index for which to find the split image
-         * @return the directory index of the split image
-         **/
-        [[nodiscard]] auto GetSplitImageIndex(uint32_t bucket_idx) const -> uint32_t {
-            return bucket_idx ^ GetGlobalDepthMask();
+            return bucket_ids_[bucket_idx];
         }
 
         /**
@@ -136,7 +110,7 @@ namespace eht {
          */
         void IncrGlobalDepth() {
             for (uint32_t i = 0; i < (1U << global_depth_); i++) {
-                bucket_page_ids_[i + (1U << global_depth_)] = bucket_page_ids_[i];
+                bucket_ids_[i + (1U << global_depth_)] = bucket_ids_[i];
                 local_depths_[i + (1U << global_depth_)] = local_depths_[i];
             }
             global_depth_++;
@@ -155,21 +129,6 @@ namespace eht {
                 }
             }
             global_depth_--;
-        }
-
-        /**
-         * @return true if the directory can be shrunk
-         */
-        auto CanShrink() -> bool {
-            if (global_depth_ == 0) {
-                return false;
-            }
-            for (uint32_t i = 0; i < (1U << global_depth_); i++) {
-                if (local_depths_[i] >= global_depth_) {
-                    return false;
-                }
-            }
-            return true;
         }
 
         /**
@@ -205,20 +164,9 @@ namespace eht {
                 uint32_t cnt = 1U << diff_bits;
                 uint32_t gap = 1U << local_depth;
                 for (uint32_t i = 0; i < cnt; i++) {
-                    bucket_page_ids_[bucket_idx + gap] = bucket_page_ids_[bucket_idx];
+                    bucket_ids_[bucket_idx + gap] = bucket_ids_[bucket_idx];
                     local_depths_[bucket_idx + gap] = local_depth;
                 }
-            }
-        }
-
-        /**
-         * Increment the local depth of the bucket at bucket_idx
-         * @param bucket_idx bucket index to increment
-         */
-        void IncrLocalDepth(uint32_t bucket_idx) {
-            local_depths_[bucket_idx]++;
-            if (local_depths_[bucket_idx] > global_depth_) {
-                IncrGlobalDepth();
             }
         }
 
@@ -233,69 +181,15 @@ namespace eht {
         }
 
         /**
-         * VerifyIntegrity
-         *
-         * Verify the following invariants:
-         * (1) All LD <= GD.
-         * (2) Each bucket has precisely 2^(GD - LD) pointers pointing to it.
-         * (3) The LD is the same at each index with the same bucket_page_id
-         */
-        void VerifyIntegrity() const {
-            // build maps of {bucket_page_id : pointer_count} and {bucket_page_id :
-            // local_depth}
-            std::unordered_map<page_id_t, uint32_t> page_id_to_count =
-                    std::unordered_map<page_id_t, uint32_t>();
-            std::unordered_map<page_id_t, uint32_t> page_id_to_ld =
-                    std::unordered_map<page_id_t, uint32_t>();
-
-            // Verify: (3) The LD is the same at each index with the same bucket_page_id
-            for (uint32_t curr_idx = 0; curr_idx < Size(); curr_idx++) {
-                page_id_t curr_page_id = bucket_page_ids_[curr_idx];
-                uint32_t curr_ld = local_depths_[curr_idx];
-
-                // Verify: (1) All LD <= GD.
-                ASSERT(curr_ld <= global_depth_,
-                              "there exists a local depth greater than the global depth");
-
-                ++page_id_to_count[curr_page_id];
-
-                if (page_id_to_ld.count(curr_page_id) > 0 &&
-                    curr_ld != page_id_to_ld[curr_page_id]) {
-                    uint32_t old_ld = page_id_to_ld[curr_page_id];
-                    printf("Verify Integrity: curr_local_depth: %u, old_local_depth %u, "
-                             "for page_id: %u",
-                             curr_ld, old_ld, curr_page_id);
-                    PrintDirectory();
-                    ASSERT(curr_ld == page_id_to_ld[curr_page_id],
-                                  "local depth is not the same at each index with same "
-                                  "bucket page id");
-                } else {
-                    page_id_to_ld[curr_page_id] = curr_ld;
-                }
-            }
-
-            // Verify: (2) Each bucket has precisely 2^(GD - LD) pointers pointing to
-            // it.
-            auto it = page_id_to_count.begin();
-            while (it != page_id_to_count.end()) {
-                page_id_t curr_page_id = it->first;
-                uint32_t curr_count = it->second;
-                uint32_t curr_ld = page_id_to_ld[curr_page_id];
-                uint32_t required_count = 0x1 << (global_depth_ - curr_ld);
-                it++;
-            }
-        }
-
-        /**
          * Prints the current directory
          */
-        void PrintDirectory() const {
+        [[maybe_unused]] void PrintDirectory() const {
             printf("======== DIRECTORY (global_depth_: %u) ========", global_depth_);
-            printf("| bucket_idx | page_id | local_depth |");
+            printf("| bucket_idx | node_id | local_depth |");
             for (uint32_t idx = 0; idx < static_cast<uint32_t>(0x1 << global_depth_);
                  idx++) {
                 printf("|    %u    |    %u    |    %u    |", idx,
-                          bucket_page_ids_[idx], local_depths_[idx]);
+                          bucket_ids_[idx], local_depths_[idx]);
             }
             printf("================ END DIRECTORY ================");
         }
@@ -304,10 +198,10 @@ namespace eht {
         uint32_t max_depth_;
         uint32_t global_depth_;
         uint8_t local_depths_[HTABLE_DIRECTORY_ARRAY_SIZE]{};
-        page_id_t bucket_page_ids_[HTABLE_DIRECTORY_ARRAY_SIZE]{};
+        node_id_t bucket_ids_[HTABLE_DIRECTORY_ARRAY_SIZE]{};
     };
 
-    static_assert(sizeof(page_id_t) == 4);
+    static_assert(sizeof(node_id_t) == 4);
 
 } // namespace eht
 

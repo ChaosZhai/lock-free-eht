@@ -13,7 +13,6 @@
 #include "eth_storage/htable_directory.h"
 #include "eth_storage/htable_header.h"
 
-
 namespace eht {
 template <typename K, typename V, typename KC>
 class CoarseEHT : public ExtendibleHashTable<K, V, KC> {
@@ -33,7 +32,7 @@ public:
         uint32_t hash_val = ExtendibleHashTable<K, V, KC>::Hash(key);
         auto header = root_->AsMut<ExtendibleHTableHeaderNode>();
         uint32_t dir_idx = header->HashToDirectoryIndex(hash_val);
-        InnerNode* dir_node = reinterpret_cast<InnerNode*>(root_->GetNode(dir_idx));
+        auto* dir_node = reinterpret_cast<InnerNode*>(root_->GetNode(dir_idx));
 
         if (dir_node == nullptr) {
             auto new_dir = new ExtendibleHTableDirectoryNode();
@@ -44,21 +43,21 @@ public:
         auto dir = dir_node->AsMut<ExtendibleHTableDirectoryNode>();
         // get bucket index
         uint32_t bucket_idx = dir->HashToBucketIndex(hash_val);
-        LeafNode<K, V, KC>* bucket_node = reinterpret_cast<LeafNode<K, V, KC>*> (dir_node->GetNode(bucket_idx));
+        auto* bucket_node = reinterpret_cast<LeafNode<K, V, KC>*> (dir_node->GetNode(bucket_idx));
         if (bucket_node == nullptr) {
-            auto new_bucket = new ExtendibleHTableBucketNode<K, V, KC>();
+            auto new_bucket = new ExtendibleHTableBucket<K, V, KC>();
             bucket_node = new LeafNode<K, V, KC>();
             bucket_node->SetData(reinterpret_cast<char*>(new_bucket));
             dir_node->SetNode(bucket_idx, bucket_node);
         }
-        auto bucket = bucket_node->template AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
+        auto bucket = bucket_node->template AsMut<ExtendibleHTableBucket<K, V, KC>>();
         if (bucket->IsFull()) {
             if (!SplitBucket(dir_node, bucket_node, bucket_idx)) {
                 return false;
             }
             // get bucket index
             uint32_t bucket_idx2 = dir->HashToBucketIndex(hash_val);
-            auto bucket2 = dir_node->GetNode(bucket_idx2)->AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
+            auto bucket2 = dir_node->GetNode(bucket_idx2)->AsMut<ExtendibleHTableBucket<K, V, KC>>();
 
             if (bucket2->Lookup(key, const_cast<V &>(value), cmp_)) {
                 return false;
@@ -73,7 +72,7 @@ public:
         uint32_t hash_val = ExtendibleHashTable<K, V, KC>::Hash(key);
         auto header = root_->AsMut<ExtendibleHTableHeaderNode>();
         uint32_t dir_idx = header->HashToDirectoryIndex(hash_val);
-        InnerNode* dir_node = reinterpret_cast<InnerNode*>(root_->GetNode(dir_idx));
+        auto* dir_node = reinterpret_cast<InnerNode*>(root_->GetNode(dir_idx));
 
         if (dir_node == nullptr) {
             return false;
@@ -81,11 +80,11 @@ public:
         auto dir = dir_node->AsMut<ExtendibleHTableDirectoryNode>();
         // get bucket index
         uint32_t bucket_idx = dir->HashToBucketIndex(hash_val);
-        LeafNode<K, V, KC>* bucket_node = reinterpret_cast<LeafNode<K, V, KC>*> (dir_node->GetNode(bucket_idx));
+        auto* bucket_node = reinterpret_cast<LeafNode<K, V, KC>*> (dir_node->GetNode(bucket_idx));
         if (bucket_node == nullptr) {
             return false;
         }
-        auto bucket = bucket_node->template AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
+        auto bucket = bucket_node->template AsMut<ExtendibleHTableBucket<K, V, KC>>();
         uint32_t value_idx = bucket->GetValueIndex(key, cmp_);
         if (value_idx == bucket->Size()) {
             return false;
@@ -101,7 +100,7 @@ public:
         uint32_t hash_val = ExtendibleHashTable<K, V, KC>::Hash(key);
         auto header = root_->AsMut<ExtendibleHTableHeaderNode>();
         uint32_t dir_idx = header->HashToDirectoryIndex(hash_val);
-        InnerNode* dir_node = reinterpret_cast<InnerNode*>(root_->GetNode(dir_idx));
+        auto* dir_node = reinterpret_cast<InnerNode*>(root_->GetNode(dir_idx));
 
         if (dir_node == nullptr) {
             return std::nullopt;
@@ -113,7 +112,7 @@ public:
         if (bucket_node == nullptr) {
            return std::nullopt;
         }
-        auto bucket = bucket_node->AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
+        auto bucket = bucket_node->AsMut<ExtendibleHTableBucket<K, V, KC>>();
         uint32_t value_idx = bucket->GetValueIndex(key, cmp_);
         if (value_idx == bucket->Size()) {
             return std::nullopt;
@@ -125,13 +124,11 @@ public:
                                                         uint32_t bucket_idx) -> bool {
 
         auto dir = dir_node->AsMut<ExtendibleHTableDirectoryNode>();
-        auto old_bucket = old_bucket_node->template AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
-        using BucketNode = ExtendibleHTableBucketNode<K, V, KC>;
-        BucketNode* new_bucket = new BucketNode();
+        auto old_bucket = old_bucket_node->template AsMut<ExtendibleHTableBucket<K, V, KC>>();
+        using Bucket = ExtendibleHTableBucket<K, V, KC>;
+        auto* new_bucket = new Bucket();
         auto new_bucket_node = new LeafNode<K, V, KC>();
         new_bucket_node->SetData(reinterpret_cast<char*>(new_bucket));
-
-
 
         // Update local depth
         if (dir->GetLocalDepth(bucket_idx) == dir->GetMaxDepth()) {
@@ -178,23 +175,22 @@ public:
 
     void MergeBucket(InnerNode *dir_node,LeafNode<K, V, KC> *old_bucket_node,
                                                         uint32_t bucket_idx) {
-        // Fetch the other bucket page
+        // Fetch the other bucket node
         auto dir = dir_node->AsMut<ExtendibleHTableDirectoryNode>();
-        auto old_bucket = old_bucket_node->template AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
+        auto old_bucket = old_bucket_node->template AsMut<ExtendibleHTableBucket<K, V, KC>>();
         uint32_t local_depth = dir->GetLocalDepth(bucket_idx);
         if (local_depth <= 0) {
             return;
         }
-        using BucketNode = ExtendibleHTableBucketNode<K, V, KC>;
         uint32_t low_bucket_idx = bucket_idx & ((1U << (local_depth - 1)) - 1);
         uint32_t high_bucket_idx = local_depth == 1 ? 1 : low_bucket_idx + (1U << (local_depth - 1));
         if (dir->GetLocalDepth(low_bucket_idx) != dir->GetLocalDepth(high_bucket_idx)) {
             return;
         }
-        page_id_t other_bucket_id =
-                bucket_idx == low_bucket_idx ? dir->GetBucketPageId(high_bucket_idx) : dir->GetBucketPageId(low_bucket_idx);
+        node_id_t other_bucket_id =
+                bucket_idx == low_bucket_idx ? dir->GetBucketId(high_bucket_idx) : dir->GetBucketId(low_bucket_idx);
         auto other_bucket_node = reinterpret_cast<LeafNode<K,V,KC>*>(dir_node->GetNode(other_bucket_id));
-        auto other_bucket = old_bucket_node->template AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
+        auto other_bucket = old_bucket_node->template AsMut<ExtendibleHTableBucket<K, V, KC>>();
         auto low_bucket  = bucket_idx == low_bucket_idx ? old_bucket : other_bucket;
         auto low_bucket_node  = bucket_idx == low_bucket_idx ? old_bucket_node : other_bucket_node;
         auto high_bucket  = bucket_idx == low_bucket_idx ? other_bucket : old_bucket;
@@ -223,7 +219,7 @@ public:
         uint32_t new_high_bucket_idx = low_bucket_idx + (1U << (dir->GetLocalDepth(low_bucket_idx) - 1));
         auto new_high_bucket_node = reinterpret_cast<LeafNode<K,V,KC>*>(dir_node->GetNode(new_high_bucket_idx));
         if (new_high_bucket_node != nullptr) {
-            auto new_high_bucket = new_high_bucket_node->template AsMut<ExtendibleHTableBucketNode<K, V, KC>>();
+            auto new_high_bucket = new_high_bucket_node->template AsMut<ExtendibleHTableBucket<K, V, KC>>();
             if (new_high_bucket->Size() == 0) {
                 MergeBucket(dir_node, new_high_bucket_node, new_high_bucket_idx);
                 return;

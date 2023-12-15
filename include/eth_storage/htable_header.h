@@ -1,7 +1,7 @@
 /**
- * Header page format:
+ * Header node format:
  *  ---------------------------------------------------
- * | DirectoryPageIds(2048) | MaxDepth (4) | Free(2044)
+ * | DirectorynodeIds(2048) | MaxDepth (4) | Free(2044)
  *  ---------------------------------------------------
  */
 
@@ -27,8 +27,8 @@ namespace eht {
 
         explicit ExtendibleHTableHeaderNode(uint32_t max_depth = HTABLE_HEADER_MAX_DEPTH) {
             max_depth_ = max_depth;
-            for (int &directory_page_id: directory_page_ids_) {
-                directory_page_id = INVALID_PAGE_ID;
+            for (int &directory_node_id: directory_node_ids_) {
+                directory_node_id = INVALID_NODE_ID;
             }
         }
 
@@ -43,48 +43,21 @@ namespace eht {
         }
 
         /**
-         * Get the directory page id at an index
-         *
-         * @param directory_idx index in the directory page id array
-         * @return directory page_id at index
-         */
-        [[nodiscard]] auto GetDirectoryPageId(uint32_t directory_idx) const -> page_id_t {
-            if (directory_idx >= MaxSize()) {
-                throw std::out_of_range("Directory index out of bound");
-            }
-            return directory_page_ids_[directory_idx];
-        }
-
-        /**
-         * @brief Set the directory page id at an index
-         *
-         * @param directory_idx index in the directory page id array
-         * @param directory_page_id page id of the directory
-         */
-        void SetDirectoryPageId(uint32_t directory_idx, page_id_t directory_page_id) {
-            if (directory_idx >= MaxSize()) {
-                throw std::out_of_range("Directory index out of bound");
-            }
-            directory_page_ids_[directory_idx] = directory_page_id;
-        }
-
-
-        /**
-         * @brief Get the maximum number of directory page ids the header page could handle
+         * @brief Get the maximum number of directory node ids the header node could handle
          */
         [[nodiscard]] auto MaxSize() const -> uint32_t { return 1 << max_depth_; }
 
         void PrintHeader() const {
             printf("======== HEADER (max_depth_: %u) ========", max_depth_);
-            printf("| directory_idx | page_id |");
+            printf("| directory_idx | node_id |");
             for (uint32_t idx = 0; idx < static_cast<uint32_t>(1 << max_depth_); idx++) {
-                printf("|    %u    |    %u    |", idx, directory_page_ids_[idx]);
+                printf("|    %u    |    %u    |", idx, directory_node_ids_[idx]);
             }
             printf("======== END HEADER ========");
         }
 
     private:
-        page_id_t directory_page_ids_[HTABLE_HEADER_ARRAY_SIZE] = {0};
+        node_id_t directory_node_ids_[HTABLE_HEADER_ARRAY_SIZE] = {0};
         uint32_t max_depth_;
     };
 
