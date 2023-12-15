@@ -17,11 +17,12 @@ add_library(myLibrary STATIC include/eht.h
         include/common.h
         include/eth_storage/htable_bucket.h
         lib/hazardPointer/reclaimer.h
+        lib/hazardPointer/reclaimer.cpp
         lib/hazardPointer/hazardPointer.h
         lib/hazardPointer/internalHazardPointer.h
         include/lockfree-eht.h
         include/lockfree_helpers/segment.h
-        include/lockfree_helpers/node.h
+        include/lockfree_helpers/lfnode.h
         include/lockfree_helpers/reverse.h
         include/lockfree_helpers/table_reclaimer.h
         include/eth_storage/htable_bucket.h)
@@ -33,6 +34,9 @@ target_include_directories(myLibrary PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(lock_free_eht
         main.cpp
         include/fine-eth.h
+        tools/lf_bench.hpp
+        src/lfnode.cpp
+        lib/hazardPointer/reclaimer.cpp
 )
 target_link_libraries(lock_free_eht myLibrary)
 

@@ -12,16 +12,16 @@ namespace eht {
     using BucketIndex = size_t;
     const size_t mask = 0x8000000000000000;
 
-    class Node {
+    class LFNode {
     public:
-        Node(HashKey hash_, bool dummy)
+        LFNode(HashKey hash_, bool dummy)
                 : hash(hash_),
                   reverse_hash(dummy ? DummyKey(hash) : RegularKey(hash)),
                   next(nullptr) {}
 
         virtual void Release() = 0;
 
-        virtual ~Node() = default;
+        virtual ~LFNode() = default;
 
         static HashKey RegularKey(HashKey hash) {
             return Reverse(hash | mask);
@@ -31,17 +31,17 @@ namespace eht {
 
         virtual bool IsDummy() const { return (reverse_hash & 0x1) == 0; }
 
-        Node *get_next() const { return next.load(std::memory_order_acquire); }
+        LFNode *get_next() const { return next.load(std::memory_order_acquire); }
 
         const HashKey hash;
         const HashKey reverse_hash;
-        std::atomic<Node *> next;
+        std::atomic<LFNode *> next;
     };
 
     // Head node of bucket
-    class DummyNode : public Node {
+    class DummyNode : public LFNode {
     public:
-        explicit DummyNode(BucketIndex bucket_index) : Node(bucket_index, true) {}
+        explicit DummyNode(BucketIndex bucket_index) : LFNode(bucket_index, true) {}
 
         ~DummyNode() override = default;
 
@@ -52,28 +52,28 @@ namespace eht {
 
 
     template<typename K, typename V, typename Hash>
-    struct RegularNode : public Node {
+    class RegularNode : public LFNode {
     public:
         RegularNode(const K &key_, const V &value_, const Hash &hash_func)
-                : Node(hash_func(key_), false), key(key_), value(new V(value_)) {}
+                : LFNode(hash_func(key_), false), key(key_), value(new V(value_)) {}
 
         RegularNode(const K &key_, V &&value_, const Hash &hash_func)
-                : Node(hash_func(key_), false),
+                : LFNode(hash_func(key_), false),
                   key(key_),
                   value(new V(std::move(value_))) {}
 
         RegularNode(K &&key_, const V &value_, const Hash &hash_func)
-                : Node(hash_func(key_), false),
+                : LFNode(hash_func(key_), false),
                   key(std::move(key_)),
                   value(new V(value_)) {}
 
         RegularNode(K &&key_, V &&value_, const Hash &hash_func)
-                : Node(hash_func(key_), false),
+                : LFNode(hash_func(key_), false),
                   key(std::move(key_)),
                   value(new V(std::move(value_))) {}
 
         RegularNode(const K &key_, const Hash &hash_func)
-                : Node(hash_func(key_), false), key(key_), value(nullptr) {}
+                : LFNode(hash_func(key_), false), key(key_), value(nullptr) {}
 
         ~RegularNode() override {
             V *ptr = value.load(std::memory_order_consume);
@@ -91,9 +91,15 @@ namespace eht {
     /*********************
      * Node Helper Functions
      *********************/
-    // Compare two nodes according to their reverse_hash and the key.
+
     template<typename K, typename V, typename Hash>
-    bool Less(RegularNode<K, V, Hash> *node1, RegularNode<K, V, Hash> *node2) {
+    bool LessRN(RegularNode<K, V, Hash> *node1, RegularNode<K, V, Hash> *node2) {
+        return node1->key < node2->key;
+    }
+    // Compare two nodes according to their reverse_hash and the key.
+
+    template<typename K, typename V, typename Hash>
+    bool Less(LFNode *node1, LFNode *node2) {
         if (node1->reverse_hash != node2->reverse_hash) {
             return node1->reverse_hash < node2->reverse_hash;
         }
@@ -103,32 +109,28 @@ namespace eht {
             return false;
         }
 
-        return node1->key < node2->key;
+        auto *regular_node1 = dynamic_cast<RegularNode<K, V, Hash> *>(node1);
+        auto *regular_node2 = dynamic_cast<RegularNode<K, V, Hash> *>(node2);
+        return LessRN<K, V, Hash>(regular_node1, regular_node2);
     }
 
     template<typename K, typename V, typename Hash>
-    bool GreaterOrEquals(RegularNode<K, V, Hash> *node1, RegularNode<K, V, Hash> *node2) {
+    bool GreaterOrEquals(LFNode *node1, LFNode *node2) {
         return !(Less<K, V, Hash>(node1, node2));
     }
 
     template<typename K, typename V, typename Hash>
-    bool Equals(Node *node1, Node *node2) {
-        return !Less<K, V, Hash>(node1, node2) && !Less<K, V, Hash>(node2, node1);
+    bool Equals(LFNode *node1, LFNode *node2) {
+        return !Less<K, V, Hash>(node1, node2)
+                && !Less<K, V, Hash>(node2,node1);
     }
 
-    bool is_marked_reference(Node *next)  {
-        return (reinterpret_cast<unsigned long>(next) & 0x1) == 0x1;
-    }
+    bool is_marked_reference(LFNode *next);
 
-    Node *get_marked_reference(Node *next) {
-        return reinterpret_cast<Node *>(reinterpret_cast<unsigned long>(next) | 0x1);
-    }
+    LFNode *get_marked_reference(LFNode *next);
 
-    Node *get_unmarked_reference(Node *next) {
-        return reinterpret_cast<Node *>(reinterpret_cast<unsigned long>(next) &
-                                        ~0x1);
-    }
+    LFNode *get_unmarked_reference(LFNode *next);
 
-    static void OnDeleteNode(void *ptr) { delete static_cast<Node *>(ptr); }
+    static void OnDeleteNode(void *ptr) { delete static_cast<LFNode *>(ptr); }
 
 }  // namespace eht

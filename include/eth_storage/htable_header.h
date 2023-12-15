@@ -25,7 +25,7 @@ namespace eht {
     class ExtendibleHTableHeaderNode  {
     public:
 
-        ExtendibleHTableHeaderNode(uint32_t max_depth = HTABLE_HEADER_MAX_DEPTH) {
+        explicit ExtendibleHTableHeaderNode(uint32_t max_depth = HTABLE_HEADER_MAX_DEPTH) {
             max_depth_ = max_depth;
             for (int &directory_page_id: directory_page_ids_) {
                 directory_page_id = INVALID_PAGE_ID;
@@ -75,12 +75,12 @@ namespace eht {
         [[nodiscard]] auto MaxSize() const -> uint32_t { return 1 << max_depth_; }
 
         void PrintHeader() const {
-            LOG_DEBUG("======== HEADER (max_depth_: %u) ========", max_depth_);
-            LOG_DEBUG("| directory_idx | page_id |");
+            printf("======== HEADER (max_depth_: %u) ========", max_depth_);
+            printf("| directory_idx | page_id |");
             for (uint32_t idx = 0; idx < static_cast<uint32_t>(1 << max_depth_); idx++) {
-                LOG_DEBUG("|    %u    |    %u    |", idx, directory_page_ids_[idx]);
+                printf("|    %u    |    %u    |", idx, directory_page_ids_[idx]);
             }
-            LOG_DEBUG("======== END HEADER ========");
+            printf("======== END HEADER ========");
         }
 
     private:

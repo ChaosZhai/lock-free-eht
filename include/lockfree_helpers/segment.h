@@ -3,12 +3,12 @@
 //
 #pragma once
 #include <atomic>
-#include "node.h"
+#include "lfnode.h"
 
 namespace eht {
 
     const int kMaxLevel = 4;
-    const int kSegmentSize = 64;
+    const int kSegmentSize = 16;
 
     using SegmentIndex = size_t;
     typedef std::atomic<DummyNode *> Bucket;

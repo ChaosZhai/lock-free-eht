@@ -1,6 +1,7 @@
 //
 // Created by Chaos Zhai on 12/13/23.
 //
+#pragma once
 
 #ifndef LOCKFREE_HASHTABLE_H
 #define LOCKFREE_HASHTABLE_H
@@ -9,11 +10,12 @@
 #include <cassert>
 #include <cmath>
 
+#include "lockfree_helpers/table_reclaimer.h"
 #include "../lib/hazardPointer/hazardPointer.h"
 #include "lockfree_helpers/segment.h"
 #include "lockfree_helpers/reverse.h"
-#include "lockfree_helpers/node.h"
-#include "lockfree_helpers/table_reclaimer.h"
+#include "lockfree_helpers/lfnode.h"
+
 
 namespace eht {
 
@@ -38,11 +40,10 @@ namespace eht {
             // Initialize first bucket
             int level = 1;
             Segment *segments = segments_;  // Point to current segment.
-            while (level <= kMaxLevel - 2) {
+            while (level++ <= kMaxLevel - 2) {
                 Segment *sub_segments = NewSegments(level);
                 segments[0].data.store(sub_segments, std::memory_order_release);
                 segments = sub_segments;
-                level++;
             }
 
             Bucket *buckets = NewBuckets();
@@ -54,9 +55,9 @@ namespace eht {
         }
 
         ~LockFreeHashTable() {
-            Node *p = head_;
+            LFNode *p = head_;
             while (p != nullptr) {
-                Node *tmp = p;
+                LFNode *tmp = p;
                 p = p->next.load(std::memory_order_acquire);
                 tmp->Release();
             }
@@ -77,14 +78,14 @@ namespace eht {
         bool Remove(const K &key) {
             HashKey hash = hash_func_(key);
             DummyNode *head = GetBucketHeadByHash(hash);
-            RegularNode delete_node(key, hash_func_);
+            RegularNode<K, V, Hash> delete_node(key, hash_func_);
             return DeleteNode(head, &delete_node);
         }
 
         bool Get(const K &key, V &value) {
             HashKey hash = hash_func_(key);
             DummyNode *head = GetBucketHeadByHash(hash);
-            RegularNode find_node(key, hash_func_);
+            RegularNode<K, V, Hash> find_node(key, hash_func_);
             return FindNode(head, &find_node, value);
         };
 
@@ -117,14 +118,14 @@ namespace eht {
 
         bool InsertDummyNode(DummyNode *parent_head, DummyNode *new_head, DummyNode **real_head);
 
-        bool DeleteNode(DummyNode *head, Node *delete_node);
+        bool DeleteNode(DummyNode *head, LFNode *delete_node);
 
         bool FindNode(DummyNode *head, RegularNode<K, V, Hash> *find_node, V &value);
 
         // Traverse list begin with head until encounter nullptr or the first node
         // which is greater than or equals to the given search_node.
-        bool SearchNode(DummyNode *head, Node *search_node, Node **prev_ptr,
-                        Node **cur_ptr, HazardPointer &prev_hp,
+        bool SearchNode(DummyNode *head, LFNode *search_node, LFNode **prev_ptr,
+                        LFNode **cur_ptr, HazardPointer &prev_hp,
                         HazardPointer &cur_hp);
 
         std::atomic<size_t> power_of_2_;   // Bucket size == 2^power_of_2_.
@@ -222,18 +223,18 @@ namespace eht {
     template<typename K, typename V, typename Hash>
     bool LockFreeHashTable<K, V, Hash>::InsertDummyNode(DummyNode *parent_head, DummyNode *new_head,
                                                         DummyNode **real_head) {
-        Node *prev;
-        Node *cur;
+        LFNode *prev, *cur;
         HazardPointer prev_hp, cur_hp;
-        while (!prev->next.compare_exchange_weak(
-                cur, new_head, std::memory_order_release, std::memory_order_relaxed)) {
+
+       do {
             if (SearchNode(parent_head, new_head, &prev, &cur, prev_hp, cur_hp)) {
                 // The head of bucket already insert into list.
                 *real_head = dynamic_cast<DummyNode *>(cur);
                 return false;
             }
             new_head->next.store(cur, std::memory_order_release);
-        }
+        }  while (!prev->next.compare_exchange_weak(
+               cur, new_head, std::memory_order_release, std::memory_order_relaxed));
         return true;
     }
 
@@ -242,8 +243,8 @@ namespace eht {
     template<typename K, typename V, typename Hash>
     bool LockFreeHashTable<K, V, Hash>::InsertRegularNode(DummyNode *head,
                                                           RegularNode<K, V, Hash> *new_node) {
-        Node *prev;
-        Node *cur;
+        LFNode *prev;
+        LFNode *cur;
         HazardPointer prev_hp, cur_hp;
         auto &reclaimer = TableReclaimer<K, V>::GetInstance(global_hp_list_);
         do {
@@ -275,15 +276,15 @@ namespace eht {
     }
 
     template<typename K, typename V, typename Hash>
-    bool LockFreeHashTable<K, V, Hash>::SearchNode(DummyNode *head, Node *search_node,
-                                                   Node **prev_ptr, Node **cur_ptr,
+    bool LockFreeHashTable<K, V, Hash>::SearchNode(DummyNode *head, LFNode *search_node,
+                                                   LFNode **prev_ptr, LFNode **cur_ptr,
                                                    HazardPointer &prev_hp,
                                                    HazardPointer &cur_hp) {
         auto &reclaimer = TableReclaimer<K, V>::GetInstance(global_hp_list_);
         try_again:
-        Node *prev = head;
-        Node *cur = prev->get_next();
-        Node *next;
+        LFNode *prev = head;
+        LFNode *cur = prev->get_next();
+        LFNode *next;
         while (true) {
             cur_hp.UnMark();
             cur_hp = HazardPointer(&reclaimer, cur);
@@ -312,10 +313,10 @@ namespace eht {
 
                 // Can not get copy_cur after above invocation,
                 // because prev may not be the predecessor of cur at this point.
-                if (GreaterOrEquals<K, V, Hash>(cur, search_node)) {
+                if (GreaterOrEquals<K, V, Hash>(cur,search_node)) {
                     *prev_ptr = prev;
                     *cur_ptr = cur;
-                    return Equals<K, V, Hash>(cur, search_node);
+                    return Equals<K, V, Hash>(cur,search_node);
                 }
 
                 // Swap cur_hp and prev_hp.
@@ -334,22 +335,20 @@ namespace eht {
 
     template<typename K, typename V, typename Hash>
     bool LockFreeHashTable<K, V, Hash>::DeleteNode(DummyNode *head,
-                                                   Node *delete_node) {
-        Node *prev;
-        Node *cur;
-        Node *next;
+                                                   LFNode *delete_node) {
+        LFNode *prev, *cur, *next;
         HazardPointer prev_hp, cur_hp;
         // Logically delete cur by marking cur->next.
-        while (!cur->next.compare_exchange_weak(next, get_marked_reference(next),
-                                                std::memory_order_release,
-                                                std::memory_order_relaxed)) {
-            while (is_marked_reference(next)) {
+       do {
+            do {
                 if (!SearchNode(head, delete_node, &prev, &cur, prev_hp, cur_hp)) {
                     return false;
                 }
                 next = cur->get_next();
-            }
-        }
+            } while (is_marked_reference(next));
+        }  while (!cur->next.compare_exchange_weak(next, get_marked_reference(next),
+                                                   std::memory_order_release,
+                                                   std::memory_order_relaxed));
 
         if (prev->next.compare_exchange_strong(cur, next,
                                                std::memory_order_release)) {
@@ -370,19 +369,18 @@ namespace eht {
     bool LockFreeHashTable<K, V, Hash>::FindNode(DummyNode *head,
                                                   RegularNode<K, V, Hash> *find_node,
                                                   V &value) {
-        Node *prev;
-        Node *cur;
+        LFNode *prev;
+        LFNode *cur;
         HazardPointer prev_hp, cur_hp;
         bool found = SearchNode(head, find_node, &prev, &cur, prev_hp, cur_hp);
         auto &reclaimer = TableReclaimer<K, V>::GetInstance(global_hp_list_);
         if (found) {
-            V *value_ptr;
-            V *temp;
+            V *value_ptr = static_cast<RegularNode<K, V, Hash> *>(cur)->value.load(
+                    std::memory_order_consume);
+            V *temp = value_ptr;
             while (temp != value_ptr) {
                 // When find and insert concurrently value may be deleted,
                 // see InsertRegularNode, so value must be marked as hazard.
-                value_ptr = static_cast<RegularNode<K, V, Hash> *>(cur)->value.load(
-                        std::memory_order_consume);
                 temp = value_ptr;
                 value_ptr = static_cast<RegularNode<K, V, Hash> *>(cur)->value.load(
                         std::memory_order_consume);

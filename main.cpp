@@ -4,6 +4,7 @@
 #include "include/coarse-eth.h"
 #include "include/fine-eth.h"
 #include "lib/comparator/int-comparator.h"
+#include "tools/lf_bench.hpp"
 
 #define ASSERT_TRUE(condition) assert(condition)
 
@@ -24,7 +25,7 @@ int main() {
 
     auto hash_fn = HashFunction<int>();
     auto cmp = IntComparator();
-    auto eht = CoarseEHT<int, int, IntComparator>("test", cmp, hash_fn);
+    auto eht = CoarseEHT<int, int, IntComparator>("tools", cmp, hash_fn);
     int num_keys = 8;
 
     // insert some values
@@ -36,7 +37,7 @@ int main() {
     }
 
     num_keys = 10;
-    auto eht2 = CoarseEHT<int, int, IntComparator>("test", cmp, hash_fn);
+    auto eht2 = CoarseEHT<int, int, IntComparator>("tools", cmp, hash_fn);
 
     // insert some values
     for (int i = 0; i < num_keys; i++) {
@@ -139,5 +140,7 @@ int main() {
     }
 
     std::cout << "All tests passed!" << std::endl;
+
+    lf_bench();
     return 0;
 }

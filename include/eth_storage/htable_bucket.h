@@ -181,22 +181,22 @@ namespace eht {
         /**
          * @return number of entries in the bucket
          */
-        auto Size() const -> uint32_t { return size_; }
+        [[nodiscard]] auto Size() const -> uint32_t { return size_; }
 
         /**
          * @return whether the bucket is full
          */
-        auto IsFull() const -> bool { return size_ >= max_size_; }
+        [[nodiscard]] auto IsFull() const -> bool { return size_ >= max_size_; }
 
         /**
          * @return whether the bucket is almost full
          */
-        auto AlmostFull() const -> bool { return size_ >= max_size_ * 0.8; }
+        [[nodiscard]] auto AlmostFull() const -> bool { return size_ >= max_size_ * 0.8; }
 
         /**
          * @return whether the bucket is empty
          */
-        auto IsEmpty() const -> bool { return size_ == 0; }
+        [[nodiscard]] auto IsEmpty() const -> bool { return size_ == 0; }
 
         /**
          * Prints the bucket's occupancy information
